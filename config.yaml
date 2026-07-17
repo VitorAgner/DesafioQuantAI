@@ -1,0 +1,34 @@
+# Sentinel — parâmetros centrais (única fonte de verdade; nenhum módulo hardcoda parâmetros)
+universe:
+  # 10 ações BR líquidas e de grande capitalização (sufixo .SA no yfinance)
+  # SUZB3 escolhida como 10ª: Yahoo mapeia histórico contínuo desde 2010 (ELET3.SA não existe no yfinance)
+  tickers: [PETR4.SA, VALE3.SA, ITUB4.SA, BBDC4.SA, BBAS3.SA, ABEV3.SA, WEGE3.SA, RENT3.SA, B3SA3.SA, SUZB3.SA]
+  index: "^BVSP"
+
+period:
+  start: "2010-01-01"
+  end: "2026-06-30"
+
+regime:
+  sma_window: 200        # dias; sensibilidade: 100, 150
+  hysteresis_band: 0.0   # variante robustez: 0.02 (±2% em torno da SMA)
+
+momentum:
+  lookback_months: 12    # janela total do sinal
+  skip_months: 1         # skip do último mês (momentum 12-1)
+  top_n: 3               # nº de ativos comprados; sensibilidade: 2, 4
+
+backtest:
+  rebalance: "M"         # mensal: sinal no último pregão, execução no 1º pregão do mês seguinte
+  cost_per_trade: 0.0    # cenário base sem custos; sensibilidade: 0.001, 0.002 (por perna)
+  initial_capital: 1.0
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  cdi_sgs_series: 12     # série SGS do BCB — CDI diário (% a.d.)
+  cdi_fallback_annual: 0.10  # usado apenas se a API do BCB falhar (declarar no relatório)
+
+output:
+  decisions_log: "reports/decisions_log.csv"
+  figures_dir: "reports/figures"

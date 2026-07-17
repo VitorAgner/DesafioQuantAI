@@ -1,0 +1,7 @@
+yfinance
+pandas
+pyarrow
+matplotlib
+pyyaml
+requests
+pytest
