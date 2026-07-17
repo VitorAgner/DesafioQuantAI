@@ -11,7 +11,7 @@ from src.backtest import run_backtest, run_benchmarks
 from src.data_loader import load_all, load_config
 from src.plots import drawdowns, equity_curves, regime_timeline
 from src.regime import regime_series
-from src.metrics import summary
+from src.metrics import summary  # noqa: E402
 
 
 def main():
@@ -35,15 +35,23 @@ def main():
     regime_timeline(ibov, bull, fig_dir)
 
     rows = [
-        summary("Sentinel", sentinel.equity, sentinel.daily_returns, cdi, sentinel.decisions),
-        summary("Momentum puro", mom_puro.equity, mom_puro.daily_returns, cdi, mom_puro.decisions),
+        summary("Sentinel", sentinel.equity, sentinel.daily_returns, cdi,
+                sentinel.decisions, sentinel.weights_daily),
+        summary("Momentum puro", mom_puro.equity, mom_puro.daily_returns, cdi,
+                mom_puro.decisions, mom_puro.weights_daily),
         summary("IBOV", ibov_eq, ibov.pct_change().fillna(0), cdi),
-        summary("CDI", cdi_eq, cdi, cdi),
+        summary("CDI", cdi_eq, cdi, cdi, is_cdi=True),
     ]
     table = pd.DataFrame(rows).set_index("Estratégia")
-    table.to_csv(ROOT / "reports" / "metrics_summary.csv")
+    table.to_csv(ROOT / "reports" / "tabela_metricas.csv")
     pd.set_option("display.float_format", "{:.4f}".format)
     print(table)
+
+    # recálculo manual de 1 linha (aceite do Bloco 1.1): Sharpe do Sentinel
+    ex = sentinel.daily_returns - cdi.reindex(sentinel.daily_returns.index).fillna(0)
+    manual = ex.mean() * 252 / (ex.std() * (252 ** 0.5))
+    print(f"\n[verificação manual] Sharpe Sentinel = mean*252/(std*sqrt252) = {manual:.6f} "
+          f"(tabela: {table.loc['Sentinel', 'Sharpe']:.6f})")
     print(f"\nFiguras em {fig_dir} | Log de decisões em {log_path}")
 
 
