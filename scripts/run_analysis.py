@@ -218,6 +218,36 @@ def main():
     ax.grid(alpha=0.3)
     save(fig, "F2_drawdown.png")
 
+    # F2W / F3W — variantes largas (16:5) para a página de resultados do relatório,
+    # onde a tabela de métricas consome a altura que uma figura 16:9 exigiria
+    WIDE = (16, 5)
+    fig, ax = plt.subplots(figsize=WIDE)
+    for label, eq, color in [("Sentinel", sent.equity, C_SENT),
+                             ("Momentum puro", mom.equity, C_MOM)]:
+        dd = eq / eq.cummax() - 1
+        ax.plot(dd.index, dd.values, label=label, color=color, lw=1.4)
+        ax.fill_between(dd.index, dd.values, 0, color=color, alpha=0.15)
+    ax.set_title("Drawdown: Sentinel × momentum puro")
+    ax.yaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
+    ax.legend(loc="lower left")
+    ax.grid(alpha=0.3)
+    save(fig, "F2W_drawdown_wide.png")
+
+    fig, axes = plt.subplots(1, 2, figsize=WIDE)
+    for ax, (name, (start, end)) in zip(axes, windows.items()):
+        for label, r, color in [("Sentinel", sent.daily_returns, C_SENT),
+                                ("Momentum puro", mom.daily_returns, C_MOM),
+                                ("IBOV", ibov_ret, C_IBOV)]:
+            eq = 100 * (1 + r.loc[start:end]).cumprod()
+            ax.plot(eq.index, eq.values, label=label, color=color, lw=1.5)
+        shade_bear(ax, bull.loc[start:end])
+        ax.set_title(name)
+        ax.grid(alpha=0.3)
+        ax.tick_params(axis="x", rotation=30, labelsize=10)
+    axes[0].legend(fontsize=10)
+    fig.suptitle("Crises: curvas normalizadas (100 = início da janela; faixas = BEAR)")
+    save(fig, "F3W_crises_wide.png")
+
     # F4 — decomposição BULL × CDI (curvas acumuladas por regime)
     stock_cols = [c for c in sent.weights_daily.columns if c != "CDI"]
     in_risk = (sent.weights_daily[stock_cols].sum(axis=1) > 0)

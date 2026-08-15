@@ -27,12 +27,15 @@ def main():
     log_path.parent.mkdir(parents=True, exist_ok=True)
     sentinel.decisions.to_csv(log_path, index=False)
 
+    # figuras de sanidade do desenvolvimento; as do relatório (F1–F9) saem de
+    # run_analysis.py e make_report_figures.py, direto em reports/figures
+    dev_dir = fig_dir / "dev"
     curves = {"Sentinel": sentinel.equity, "Momentum puro": mom_puro.equity,
               "IBOV": ibov_eq, "CDI": cdi_eq}
-    equity_curves(curves, fig_dir)
-    drawdowns(curves, fig_dir)
+    equity_curves(curves, dev_dir)
+    drawdowns(curves, dev_dir)
     bull = regime_series(ibov, cfg["regime"]["sma_window"], cfg["regime"]["hysteresis_band"])
-    regime_timeline(ibov, bull, fig_dir)
+    regime_timeline(ibov, bull, dev_dir)
 
     rows = [
         summary("Sentinel", sentinel.equity, sentinel.daily_returns, cdi,

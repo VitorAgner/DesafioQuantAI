@@ -4,3 +4,8 @@ data/raw/
 data/processed/
 .pytest_cache/
 .venv/
+node_modules/
+package.json
+package-lock.json
+reports/qa/
+reports/figures/dev/
