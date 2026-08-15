@@ -213,6 +213,62 @@ def fig_tabela():
     save(fig, "F8_tabela_resultados.png")
 
 
+# ------------------------- F9W: GenAI, largura total da página, no tamanho real
+def fig_genai_wide():
+    """Autorada em polegadas reais (12,5 x 3,6) para ocupar a largura da página.
+
+    Como o eixo usa polegadas como unidade, os tamanhos em pontos aqui são os
+    tamanhos finais impressos — sem redução ao embutir na página.
+    """
+    fig, ax = plt.subplots(figsize=(12.5, 3.6))
+    ax.set_xlim(0, 12.5)
+    ax.set_ylim(0, 3.6)
+    ax.axis("off")
+
+    ax.text(0.15, 3.42, "Uso de IA generativa: etapa → aplicação → impacto",
+            fontsize=13, weight="bold", color=C_SENT, va="center")
+
+    linhas = [
+        ("Ideação", "Refinar a hipótese e listar vieses da tese",
+         "Tese em formato testável e checklist anti-viés"),
+        ("Código", "Gerar e revisar os módulos do backtest",
+         "Esqueleto ponta a ponta funcional em um dia"),
+        ("Validação", "Pedir à IA que atacasse a própria estratégia",
+         "Auditoria do Sharpe e testes de look-ahead"),
+        ("Interpretação", "Discutir crises, whipsaws e limitações",
+         "Análise crítica em vez de métricas descritivas"),
+        ("Comunicação", "Estruturar o relatório e a identidade visual",
+         "Narrativa e figuras coerentes com a estratégia"),
+    ]
+    x_et, w_et = 0.15, 1.55
+    x_us, w_us = 1.95, 4.6
+    x_im, w_im = 6.85, 5.5
+    ax.text(x_et + w_et / 2, 3.06, "ETAPA", fontsize=8, weight="bold",
+            color=C_GRAY, ha="center", va="center")
+    ax.text(x_us + w_us / 2, 3.06, "COMO A IA FOI USADA", fontsize=8, weight="bold",
+            color=C_GRAY, ha="center", va="center")
+    ax.text(x_im + w_im / 2, 3.06, "IMPACTO PRÁTICO", fontsize=8, weight="bold",
+            color=C_GRAY, ha="center", va="center")
+
+    for i, (etapa, uso, impacto) in enumerate(linhas):
+        y = 2.72 - i * 0.325
+        box(ax, x_et, y - 0.135, w_et, 0.27, etapa, fs=8.5, weight="bold", ec=C_SENT, lw=1.1)
+        box(ax, x_us, y - 0.135, w_us, 0.27, uso, fs=8.5, ec=C_GRAY, fc="white", lw=1.0)
+        box(ax, x_im, y - 0.135, w_im, 0.27, impacto, fs=8.5, ec=C_GRAY, fc="white", lw=1.0)
+        arrow(ax, x_et + w_et + 0.03, y, x_us - 0.03, y, color=C_GRAY, lw=1.1)
+        arrow(ax, x_us + w_us + 0.03, y, x_im - 0.03, y, color=C_GRAY, lw=1.1)
+
+    box(ax, 0.15, 0.10, 12.2, 0.92, "", fc=C_FILL_ALERT, ec=C_ALERT, lw=1.3)
+    ax.text(0.35, 0.87, "LIMITAÇÃO ENCONTRADA", fontsize=8.5, weight="bold", color=C_ALERT,
+            va="center")
+    ax.text(0.35, 0.44,
+            "Dois trechos gerados pela IA rodavam sem erro e entregavam resultado errado: uma série de regime com tipo genérico, que fazia o gráfico\n"
+            "marcar todo o período como BEAR, e uma expressão regular que suprimia blocos inteiros do texto do relatório. Ambos só apareceram na\n"
+            "conferência visual. Desde então nenhuma saída da IA vira resultado sem teste ou inspeção.",
+            fontsize=8, color=C_INK, va="center", linespacing=1.5)
+    save(fig, "F9W_uso_genai_wide.png")
+
+
 # ------------------------------------------------------------------- F9: GenAI
 def fig_genai():
     fig, ax = canvas()
@@ -258,3 +314,4 @@ if __name__ == "__main__":
     fig_fluxo()
     fig_tabela()
     fig_genai()
+    fig_genai_wide()

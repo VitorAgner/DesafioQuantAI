@@ -104,6 +104,107 @@ def place_image(fig, nome, x, y_top, w):
     return y_top - h
 
 
+def draw_emblema(fig, x, y_top, size):
+    """Emblema do robô: torre de vigia com varredura de radar.
+
+    Redesenhado a partir do SVG de origem em primitivas do matplotlib (o Windows
+    desta máquina não tem as bibliotecas do cairo para rasterizar SVG). Sai
+    vetorial no PDF, então mantém nitidez em qualquer zoom.
+    """
+    import numpy as np
+    from matplotlib.colors import LinearSegmentedColormap, to_rgb
+    from matplotlib.patches import Circle, FancyBboxPatch, Polygon
+
+    axi = fig.add_axes([x / W, (y_top - size) / H, size / W, size / H])
+    axi.set_xlim(0, 512)
+    axi.set_ylim(512, 0)          # y cresce para baixo, como no SVG
+    axi.set_aspect("equal")
+    axi.axis("off")
+    for s in axi.spines.values():
+        s.set_visible(False)
+    k = size * (13.333 / 16) * 72 / 512     # larguras de traço SVG → pontos
+
+    def metal(y):
+        t = min(max((y - 120) / 320.0, 0.0), 1.0)
+        a, b = np.array(to_rgb("#dbe4f7")), np.array(to_rgb("#8ea3d4"))
+        return tuple(a + (b - a) * t)
+
+    # disco de fundo e anéis
+    axi.add_patch(Circle((256, 256), 248, facecolor="#0e1c38", edgecolor="none"))
+    axi.add_patch(Circle((256, 256), 248, facecolor="none", edgecolor="#1f3b73", lw=16 * k))
+
+    # campo interno: gradiente radial deslocado, recortado pelo círculo
+    cmap = LinearSegmentedColormap.from_list(
+        "field", [(0.0, "#2b4d8f"), (0.55, "#1f3b73"), (1.0, "#0e1c38")])
+    n = 320
+    gx, gy = np.meshgrid(np.linspace(30, 482, n), np.linspace(30, 482, n))
+    dist = np.hypot(gx - 219.8, gy - 165.6) / 384.2
+    im = axi.imshow(np.clip(dist, 0, 1), cmap=cmap, vmin=0, vmax=1,
+                    extent=[30, 482, 482, 30], origin="upper", zorder=1,
+                    interpolation="bilinear")
+    im.set_clip_path(Circle((256, 256), 226, transform=axi.transData))
+    axi.add_patch(Circle((256, 256), 226, facecolor="none", edgecolor="#7f94c4",
+                         lw=3 * k, alpha=0.55, zorder=2))
+    axi.add_patch(Circle((256, 256), 206, facecolor="none", edgecolor="#7f94c4",
+                         lw=2 * k, alpha=0.25, ls=(0, (0.4, 2.6)), zorder=2))
+
+    # varredura do radar: três arcos concêntricos a partir do farol da torre
+    for raio, swidth in ((54, 9), (80, 8), (106, 7)):
+        ang = np.linspace(np.radians(-75), np.radians(-15), 60)
+        px, py = 262 + raio * np.cos(ang), 148 + raio * np.sin(ang)
+        # o gradiente original vai do canto inferior-esquerdo ao superior-direito
+        proj = (np.cos(ang) - np.sin(ang)) / np.sqrt(2)
+        alpha = 0.05 + 0.85 * np.clip((proj - 0.85) / 0.15, 0, 1)
+        for i in range(len(ang) - 1):
+            axi.plot(px[i:i + 2], py[i:i + 2], color="#ff4d4d",
+                     alpha=float(alpha[i]), lw=swidth * k, solid_capstyle="round",
+                     zorder=3)
+
+    # antena parabólica e mastro
+    ang = np.linspace(np.radians(146.25), np.radians(213.75), 40)
+    axi.plot(269.93 + 36 * np.cos(ang), 148 + 36 * np.sin(ang), color=metal(148),
+             lw=15 * k, solid_capstyle="round", zorder=4)
+    axi.plot([248, 256], [154, 190], color=metal(172), lw=7 * k,
+             solid_capstyle="round", zorder=4)
+
+    # cabine e plataforma
+    axi.add_patch(Polygon([(214, 190), (298, 190), (294, 240), (218, 240)],
+                          closed=True, facecolor="#122548", edgecolor=metal(215),
+                          lw=9 * k, joinstyle="round", zorder=5))
+    axi.plot([218, 294], [214, 214], color=metal(214), lw=5 * k, alpha=0.5, zorder=6)
+    axi.add_patch(Polygon([(200, 240), (312, 240), (306, 256), (206, 256)],
+                          closed=True, facecolor="#16305e", edgecolor=metal(248),
+                          lw=8 * k, joinstyle="round", zorder=5))
+
+    # estrutura: pernas, travessas e contraventamentos
+    estrutura = [
+        ([206, 188], [256, 430], 11, 1.0), ([306, 324], [256, 430], 11, 1.0),
+        ([222, 232], [256, 430], 6, 0.7), ([290, 280], [256, 430], 6, 0.7),
+        ([204, 308], [300, 300], 6, 1.0), ([198, 314], [356, 356], 6, 1.0),
+        ([205, 306], [268, 296], 4, 0.6), ([307, 204], [268, 296], 4, 0.6),
+        ([202, 310], [312, 348], 4, 0.6), ([309, 199], [312, 348], 4, 0.6),
+        ([197, 316], [368, 414], 4, 0.6), ([315, 189], [368, 414], 4, 0.6),
+        ([170, 342], [430, 430], 12, 1.0),
+    ]
+    for xs, ys, swidth, alpha in estrutura:
+        axi.plot(xs, ys, color=metal(sum(ys) / 2), lw=swidth * k, alpha=alpha,
+                 solid_capstyle="round", zorder=5)
+
+    # janela iluminada e luzes de base (tom de alerta)
+    axi.add_patch(FancyBboxPatch((228, 202), 56, 18,
+                                 boxstyle="round,pad=0,rounding_size=4",
+                                 facecolor="#ff4d4d", alpha=0.18, edgecolor="none",
+                                 zorder=6))
+    axi.add_patch(FancyBboxPatch((233, 206), 46, 10,
+                                 boxstyle="round,pad=0,rounding_size=3",
+                                 facecolor="#ff5252", edgecolor="none", zorder=7))
+    axi.add_patch(Circle((256, 452), 9, facecolor="#e03131", edgecolor="none", zorder=6))
+    axi.add_patch(Circle((196, 444), 5, facecolor="#e03131", alpha=0.7,
+                         edgecolor="none", zorder=6))
+    axi.add_patch(Circle((316, 444), 5, facecolor="#e03131", alpha=0.7,
+                         edgecolor="none", zorder=6))
+
+
 def card(ax, x, y_top, w, h, *, fc=CARD, ec=NAVY, lw=1.4):
     ax.add_patch(FancyBboxPatch((x, y_top - h), w, h,
                                 boxstyle="round,pad=0.06,rounding_size=0.14",
@@ -136,17 +237,14 @@ def pagina_1(pp, pg):
             "A sentinela que vigia o regime do mercado antes de deixar a carteira avançar",
             fontsize=13.5, style="italic", color=ON_DARK_SOFT, va="top")
 
-    # espaço reservado para o emblema do robô
-    card(ax, 13.6, 8.45, 1.8, 1.8, fc="#16294f", ec=ON_DARK_SOFT, lw=1.2)
-    ax.text(14.5, 7.55, "emblema\ndo robô", fontsize=10, color=ON_DARK_SOFT,
-            ha="center", va="center", linespacing=1.5)
+    draw_emblema(fig, 13.45, 8.6, 2.0)
 
     y = 6.6
     for head, body in pg["blocos"]:
-        y = text_block(ax, 0.55, y, 6.4, head, body, dark=True, fs=10)
+        y = text_block(ax, 0.55, y, 5.5, head, body, dark=True, fs=10)
         y -= 0.2
 
-    place_image(fig, "F6_diagrama_camadas.png", 7.4, 6.35, 8.2)
+    place_image(fig, "F6_diagrama_camadas.png", 6.5, 6.5, 9.0)
     page_number(ax, 1, dark=True)
     emit(pp, fig, 1)
 
@@ -157,12 +255,47 @@ def pagina_2(pp, pg):
 
     y = 7.15
     for head, body in pg["blocos"]:
-        y = text_block(ax, 0.55, y, 4.75, head, body)
+        y = text_block(ax, 0.55, y, 4.3, head, body, fs=10)
         y -= 0.25
 
-    place_image(fig, "F7_fluxo_modelagem.png", 5.7, 7.2, 9.75)
+    place_image(fig, "F7_fluxo_modelagem.png", 5.2, 7.25, 10.3)
     page_number(ax, 2)
     emit(pp, fig, 2)
+
+
+def tabela_sensibilidade(ax, x0, y_top, w):
+    """Robustez desenhada nativamente na página: fontes em tamanho real."""
+    df = pd.read_csv(ROOT / "reports" / "sensibilidade.csv").set_index("Cenário")
+    linhas = [("Caso-base (SMA200 · 12-1)", "SMA200 (base)"),
+              ("Janela do regime: SMA 100", "SMA100"),
+              ("Janela do regime: SMA 150", "SMA150"),
+              ("Momentum 6-1", "Mom 6-1"),
+              ("Momentum 9-1", "Mom 9-1"),
+              ("Custo 0,10% por perna", "Custo 0,10%"),
+              ("Custo 0,20% por perna", "Custo 0,20%")]
+    cols = ["CAGR", "Sharpe", "MaxDD", "Calmar"]
+
+    def fmt(c, v):
+        s = f"{v:.2f}" if c in ("Sharpe", "Calmar") else f"{v:.1%}"
+        return s.replace(".", ",")
+
+    cw = (w - 2.9) / 4
+    xv = x0 + 2.9
+    ax.text(x0, y_top, "Cenário", fontsize=8.5, weight="bold", color=GRAY, va="center")
+    for j, c in enumerate(cols):
+        ax.text(xv + j * cw + cw / 2, y_top, c, fontsize=8.5, weight="bold",
+                color=GRAY, ha="center", va="center")
+    for i, (rotulo, chave) in enumerate(linhas):
+        y = y_top - 0.45 - i * 0.4
+        base = i == 0
+        if base:
+            card(ax, x0 - 0.15, y + 0.2, w + 0.3, 0.4, fc=CARD, ec=NAVY, lw=1.0)
+        ax.text(x0, y, rotulo, fontsize=9, weight="bold" if base else "normal",
+                color=NAVY if base else INK, va="center")
+        for j, c in enumerate(cols):
+            ax.text(xv + j * cw + cw / 2, y, fmt(c, df.loc[chave, c]), fontsize=9,
+                    weight="bold" if base else "normal",
+                    color=NAVY if base else INK, ha="center", va="center")
 
 
 def pagina_3(pp, pg):
@@ -171,10 +304,20 @@ def pagina_3(pp, pg):
 
     xs = [0.65, 5.85, 11.05]
     for (head, body), x in zip(pg["blocos"], xs):
-        text_block(ax, x, 7.35, 4.6, head, body, fs=9.5)
+        text_block(ax, x, 7.35, 4.6, head, body, fs=9)
 
-    place_image(fig, "F1_curvas_patrimonio.png", 0.65, 4.4, 6.9)
-    place_image(fig, "F5_sensibilidade.png", 8.45, 4.4, 6.9)
+    ax.text(0.65, 4.98, "Curvas de patrimônio 2010–2026 (base 1,0; escala log; faixas = BEAR)",
+            fontsize=9, weight="bold", color=NAVY, va="center")
+    place_image(fig, "P3_curvas.png", 0.65, 4.78, 6.9)
+
+    ax.text(8.4, 4.98, "Robustez: sensibilidade a parâmetros e custos",
+            fontsize=9, weight="bold", color=NAVY, va="center")
+    tabela_sensibilidade(ax, 8.4, 4.55, 6.95)
+    ax.text(8.4, 1.35,
+            "A variação entre parâmetros é a medida honesta da fragilidade da estratégia. "
+            "O ganho da SMA100 nesta amostra é hipótese para validação out-of-sample,\nnão "
+            "fundamento para trocar o caso-base a posteriori.",
+            fontsize=8, color=GRAY, va="top", linespacing=1.5)
     page_number(ax, 3)
     emit(pp, fig, 3)
 
@@ -217,17 +360,21 @@ def pagina_4(pp, pg):
     page_title(ax, "Resultados", "Menos drawdown, menos retorno: o trade-off medido")
 
     tabela_metricas(ax, 7.3)
-    ax.text(0.65, 5.02,
+    ax.text(0.65, 5.18,
             "Sharpe = média aritmética do excesso diário sobre o CDI, anualizada por √252; "
             "não equivale a (CAGR − CDI)/volatilidade. CDI é a taxa livre de risco, portanto sem Sharpe.",
             fontsize=8.5, color=GRAY, va="top")
 
     xs = [0.65, 5.85, 11.05]
     for (head, body), x in zip(pg["blocos"], xs):
-        text_block(ax, x, 4.72, 4.6, head, body, fs=9, hfs=10.5)
+        text_block(ax, x, 4.85, 4.6, head, body, fs=9, hfs=10.5)
 
-    place_image(fig, "F2W_drawdown_wide.png", 0.55, 2.85, 7.3)
-    place_image(fig, "F3W_crises_wide.png", 8.15, 2.85, 7.3)
+    ax.text(0.65, 3.1, "Drawdown: Sentinel × momentum puro",
+            fontsize=9, weight="bold", color=NAVY, va="center")
+    ax.text(8.25, 3.1, "Crises: curvas normalizadas em 100 (faixas = BEAR)",
+            fontsize=9, weight="bold", color=NAVY, va="center")
+    place_image(fig, "P4_drawdown.png", 0.65, 2.9, 7.3)
+    place_image(fig, "P4_crises.png", 8.25, 2.9, 7.3)
     page_number(ax, 4)
     emit(pp, fig, 4)
 
@@ -240,8 +387,7 @@ def pagina_5(pp, pg):
     for (head, body), x in zip(pg["blocos"], xs):
         text_block(ax, x, 7.35, 4.6, head, body, dark=True, fs=9.5)
 
-    place_image(fig, "F9_uso_genai.png", 0.65, 4.4, 7.0)
-    place_image(fig, "F4_decomposicao_regime.png", 8.45, 4.4, 6.9)
+    place_image(fig, "F9W_uso_genai_wide.png", 1.0, 4.6, 14.0)
     page_number(ax, 5, dark=True)
     emit(pp, fig, 5)
 
